@@ -1,114 +1,117 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Запись и распознавание речи</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        button {
-            padding: 10px 15px;
-            margin: 5px;
-            cursor: pointer;
-        }
-        #audioPlayer {
-            width: 100%;
-            margin-top: 20px;
-        }
-        #output {
-            margin-top: 20px;
-            padding: 10px;
-            border: 1px solid #ddd;
-            min-height: 50px;
-        }
-    </style>
+    <title>Запись голоса</title>
 </head>
 <body>
-    <h1>Запись и распознавание речи</h1>
-    <button id="startRecognition">Начать распознавание</button>
-    
+
+    <h1>Запись голоса</h1>
+    <button id="startRecord">Начать запись</button>
+    <button id="stopRecord" disabled>Остановить запись</button>
+    <audio id="audioPlayer" controls></audio>
     <a id="downloadLink" style="display: none;">Скачать запись</a>
-    
-    <div id="output"></div>
-    <input
-  type="text"
-  id="input"
-  name="input"
-  required/>
 
 
-    <script>
-        // Элементы интерфейса
-        const startRecognitionBtn = document.getElementById('startRecognition');
-        const outputDiv = document.getElementById('output');
-        const inputDiv = document.getElementById('input');
-        flag = true
-        
-        // Переменные для распознавания речи
-        let recognition;
-        let isRecognizing = false;
 
-        // ===== РАСПОЗНАВАНИЕ РЕЧИ =====
-        startRecognitionBtn.addEventListener('click', () => {
-            if (!isRecognizing) {
-                startSpeechRecognition();
-            } else {
-                stopSpeechRecognition();
-            }
-        });
+<script>// script.js
+const startBtn = document.getElementById('startRecord');
+const stopBtn = document.getElementById('stopRecord');
+const audioPlayer = document.getElementById('audioPlayer');
+const downloadLink = document.getElementById('downloadLink');
+const statusDiv = document.getElementById('statusDiv'); // Добавьте этот элемент в HTML
 
-        function startSpeechRecognition() {
-            if ('webkitSpeechRecognition' in window) {
-                recognition = new webkitSpeechRecognition();
-                recognition.lang = 'ru-RU';
-                recognition.interimResults = false;
-                
-                recognition.onresult = (event) => {
-                    const transcript = event.results[0][0].transcript;
-                    outputDiv.textContent +=  " " + transcript;
-                    inputDiv.value = paragraph.textContent;
-                    // if (flag) {
-                    //     outputDiv.textContent = "Распознанный текст: " + transcript;
-                    // } else {
-                    //     flag = false;
-                    //     outputDiv.textContent += transcript;
-                    // }               
-                    // outputDiv.value = "Распознанный текст: " + transcript;
-                };
-                
-                recognition.onerror = (event) => {
-                    console.error("Ошибка распознавания:", event.error);
-                    outputDiv.textContent = "Ошибка: " + event.error;
-                };
-                
-                recognition.onend = () => {
-                    if (isRecognizing) {
-                        recognition.start(); // Автоперезапуск
-                    }
-                };
-                
-                recognition.start();
-                isRecognizing = true;
-                startRecognitionBtn.textContent = "Остановить распознавание";
-                outputDiv.textContent = "Слушаю... говорите!";
-            } else {
-                outputDiv.textContent = "Ваш браузер не поддерживает распознавание речи!";
+let mediaRecorder;
+let audioChunks = [];
+let audioStream; // Для хранения потока микрофона
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.startsWith(name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
             }
         }
+    }
+    return cookieValue;
+}
 
-        function stopSpeechRecognition() {
-            if (recognition) {
-                recognition.stop();
+
+// Запрос разрешения на микрофон и начало записи
+startBtn.addEventListener('click', async () => {
+    try {
+        audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(audioStream);
+
+        mediaRecorder.ondataavailable = event => {
+            audioChunks.push(event.data);
+        };
+
+        mediaRecorder.onstop = async () => {
+            const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+            const audioUrl = URL.createObjectURL(audioBlob);
+            audioPlayer.src = audioUrl;
+
+            // Создание ссылки для скачивания
+            downloadLink.href = audioUrl;
+            downloadLink.download = 'recorded_audio.wav';
+            downloadLink.style.display = 'block';
+
+            const formData = new FormData();
+            formData.append('audio', audioBlob, 'recording.wav');
+
+            try {
+                const csrfToken = getCookie('csrftoken'); // Получаем CSRF-токен
+
+                // Добавлен async/await для правильной обработки Promise
+                const response = await fetch('http://127.0.0.1:8080/', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': csrfToken, // Добавляем CSRF-токен в заголовок
+                    },
+                    credentials: 'include', // Важно для передачи куки
+                });
+
+                const result = await response.json();
+                if (statusDiv) {
+                    statusDiv.textContent = "Файл успешно отправлен!";
+                }
+                console.log("Ответ сервера:", result);
+            } catch (error) {
+                if (statusDiv) {
+                    statusDiv.textContent = "Ошибка отправки: " + error.message;
+                }
+                console.error("Ошибка:", error);
             }
-            isRecognizing = false;
-            startRecognitionBtn.textContent = "Начать распознавание";
-            outputDiv.textContent += "\nРаспознавание остановлено";
-            console.log(outputDiv)
-            console.log(inputDiv)
-        }
-    </script>
+
+            // Освобождаем поток микрофона
+            audioStream.getTracks().forEach(track => track.stop());
+        };
+
+        mediaRecorder.start();
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+        audioChunks = [];
+    } catch (error) {
+        console.error('Ошибка доступа к микрофону:', error);
+        alert('Не удалось получить доступ к микрофону');
+    }
+});
+
+// Остановка записи
+stopBtn.addEventListener('click', () => {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
+    }
+});
+</script>
 </body>
 </html>
+
+
