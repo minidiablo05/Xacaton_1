@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepSeek Chat Frontend</title>
+    <link rel="stylesheet" href="{% static 'css/styles.css'%}" type="text/css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <div class="chat-container">
+        <header class="chat-header">
+            <div class="logo">
+                <i class="fas fa-robot"></i>
+                <h1>DeepSeek Chat</h1>
+            </div>
+            <div class="model-info">Model: DeepSeek-V3</div>
+        </header>
+
+        <div class="chat-messages" id="chatMessages">
+            <!-- Сообщения будут добавляться сюда -->
+            <div class="message bot-message">
+                <div class="message-content">
+                    Привет! Я DeepSeek Chat. Чем могу помочь?
+                </div>
+            </div>
+        </div>
+
+        <div class="chat-input">
+            <textarea id="userInput" placeholder="Введите ваше сообщение..." rows="1"></textarea>
+            <button id="sendButton"><i class="fas fa-paper-plane"></i></button>
+        </div>
+
+    </div>
+
+    <script src='{% static "js/script.js" %}'></script>
+</body>
+</html>
+
+
+<!DOCTYPE html>
+{% load static %}
+<html>
+<head>
+    <title>Запись голоса</title>
+</head>
+<body>
+    <button id="Record">Начать запись</button>
+    <button><img src='{% static "img/microphone.png" %}' alt="record" id="record_img" /></button>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script>// script.js
+const statusDiv = document.getElementById('statusDiv'); // Добавьте этот элемент в id="Record"HTML
+const speechBtn = document.getElementById('Record');
+
+let mediaRecorder;
+let audioChunks = [];
+let audioStream; // Для хранения потока микрофона
+
+let isRecognizing = false;
+
+// Функция для кодирования WAV в MP3
+function encodeToMp3(audioBuffer) {
+    const channels = audioBuffer.numberOfChannels;
+    const sampleRate = audioBuffer.sampleRate;
+    const samples = audioBuffer.getChannelData(0);
+    
+    
+    const mp3encoder = new lamejs.Mp3Encoder(channels, sampleRate, 128);
+    const sampleBlockSize = 1152;
+    const mp3Data = [];
+    
+    for (let i = 0; i < samples.length; i += sampleBlockSize) {
+        const sampleChunk = samples.subarray(i, i + sampleBlockSize);
+        const mp3buf = mp3encoder.encodeBuffer(sampleChunk);
+        if (mp3buf.length > 0) {
+            mp3Data.push(mp3buf);
+        }
+    }
+    
+    const mp3buf = mp3encoder.flush();
+    if (mp3buf.length > 0) {
+        mp3Data.push(mp3buf);
+    }
+    
+    return new Blob(mp3Data, { type: 'audio/mp3' });
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.startsWith(name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+speechBtn.addEventListener('click', () => {
+            if (!isRecognizing) {
+                startSpeech();
+            } else {
+                stopSpeech();
+            }
+        });
+
+// Запрос разрешения на микрофон и начало записи
+async function startSpeech() {
+    try {
+        speechBtn.textContent = "Идёт запись";
+        audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(audioStream);
+
+        mediaRecorder.ondataavailable = event => {
+            audioChunks.push(event.data);
+        };
+
+        mediaRecorder.onstop = async () => {
+            speechBtn.textContent = "Идёт отправка";
+            const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+            // const mp3Blob = encodeToMp3(audioBlob);
+
+            const formData = new FormData();
+            // formData.append('audio', mp3Blob, 'recording.mp3');
+            formData.append('audio', audioBlob, 'recording.wav');
+
+            try {
+                const csrfToken = getCookie('csrftoken'); // Получаем CSRF-токен
+
+                // Добавлен async/await для правильной обработки Promise
+                const response = await fetch('', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': csrfToken, // Добавляем CSRF-токен в заголовок
+                    },
+                    credentials: 'include', // Важно для передачи куки
+                });
+
+                const result = await response.json();
+                if (statusDiv) {
+                    statusDiv.textContent = "Файл успешно отправлен!";
+                }
+                console.log("Ответ сервера:", result);
+            } catch (error) {
+                if (statusDiv) {
+                    statusDiv.textContent = "Ошибка отправки: " + error.message;
+                }
+                console.error("Ошибка:", error);
+            }
+
+            // Освобождаем поток микрофона
+            audioStream.getTracks().forEach(track => track.stop());
+        };
+
+        mediaRecorder.start();
+        isRecognizing = true;
+        audioChunks = [];
+    } catch (error) {
+        console.error('Ошибка доступа к микрофону:', error);
+        alert('Не удалось получить доступ к микрофону');
+    }
+}
+
+// Остановка записи
+async function stopSpeech(){
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+        isRecognizing = false;
+        speechBtn.textContent = "Запись отправленна";
+    }
+}
+</script>
+</body>
+</html>
+
+

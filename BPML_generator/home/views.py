@@ -9,7 +9,8 @@ def transcribe_audio(request):
         print(request.FILES.get('audio'))
         return JsonResponse({"status": "success"})
 
-    return render(request, "transcribe_audio.html")
+    return render(request, "transcribe_audio21.html")
+    #return render(request, "transcribe_audio.html")
 
 
 

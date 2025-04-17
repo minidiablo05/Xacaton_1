@@ -67,7 +67,7 @@ startBtn.addEventListener('click', async () => {
                 const csrfToken = getCookie('csrftoken'); // Получаем CSRF-токен
 
                 // Добавлен async/await для правильной обработки Promise
-                const response = await fetch('http://127.0.0.1:8080/', {
+                const response = await fetch('', {
                     method: 'POST',
                     body: formData,
                     headers: {
