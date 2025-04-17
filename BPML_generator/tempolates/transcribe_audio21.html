@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepSeek Chat Frontend</title>
+    <link rel="stylesheet" href="{% static 'css/styles.css'%}" type="text/css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <div class="chat-container">
+        <header class="chat-header">
+            <div class="logo">
+                <i class="fas fa-robot"></i>
+                <h1>DeepSeek Chat</h1>
+            </div>
+            <div class="model-info">Model: DeepSeek-V3</div>
+        </header>
+
+        <div class="chat-messages" id="chatMessages">
+            <!-- Сообщения будут добавляться сюда -->
+            <div class="message bot-message">
+                <div class="message-content">
+                    Привет! Я DeepSeek Chat. Чем могу помочь?
+                </div>
+            </div>
+        </div>
+
+        <div class="chat-input">
+            <textarea id="userInput" placeholder="Введите ваше сообщение..." rows="1"></textarea>
+            <button  id="Record" name="Record"><i class="fa-solid fa-microphone-lines"></i></button>
+            <button id="sendButton" name="sendButton"><i class="fas fa-paper-plane"></i></button>
+        </div>
+
+    </div>
+
+    <script src='{% static "js/script.js" %}'></script>
+</body>
+</html>
+
+
+

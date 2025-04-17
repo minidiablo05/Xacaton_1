@@ -1,0 +1,115 @@
+<!-- Здесь представлен код работы с Web Sprrch Api не до конца рабочий, только в консоль выводит текст -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Запись и распознавание речи</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        button {
+            padding: 10px 15px;
+            margin: 5px;
+            cursor: pointer;
+        }
+        #audioPlayer {
+            width: 100%;
+            margin-top: 20px;
+        }
+        #output {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            min-height: 50px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Запись и распознавание речи</h1>
+    <button id="startRecognition">Начать распознавание</button>
+
+    <a id="downloadLink" style="display: none;">Скачать запись</a>
+
+    <div id="output"></div>
+    <input
+  type="text"
+  id="input"
+  name="input"
+  required/>
+
+
+    <script>
+        // Элементы интерфейса
+        const startRecognitionBtn = document.getElementById('startRecognition');
+        const outputDiv = document.getElementById('output');
+        const inputDiv = document.getElementById('input');
+        flag = true
+
+        // Переменные для распознавания речи
+        let recognition;
+        let isRecognizing = false;
+
+        // ===== РАСПОЗНАВАНИЕ РЕЧИ =====
+        startRecognitionBtn.addEventListener('click', () => {
+            if (!isRecognizing) {
+                startSpeechRecognition();
+            } else {
+                stopSpeechRecognition();
+            }
+        });
+
+        function startSpeechRecognition() {
+            if ('webkitSpeechRecognition' in window) {
+                recognition = new webkitSpeechRecognition();
+                recognition.lang = 'ru-RU';
+                recognition.interimResults = false;
+
+                recognition.onresult = (event) => {
+                    const transcript = event.results[0][0].transcript;
+                    outputDiv.textContent +=  " " + transcript;
+                    inputDiv.value = paragraph.textContent;
+                    // if (flag) {
+                    //     outputDiv.textContent = "Распознанный текст: " + transcript;
+                    // } else {
+                    //     flag = false;
+                    //     outputDiv.textContent += transcript;
+                    // }
+                    // outputDiv.value = "Распознанный текст: " + transcript;
+                };
+
+                recognition.onerror = (event) => {
+                    console.error("Ошибка распознавания:", event.error);
+                    outputDiv.textContent = "Ошибка: " + event.error;
+                };
+
+                recognition.onend = () => {
+                    if (isRecognizing) {
+                        recognition.start(); // Автоперезапуск
+                    }
+                };
+
+                recognition.start();
+                isRecognizing = true;
+                startRecognitionBtn.textContent = "Остановить распознавание";
+                outputDiv.textContent = "Слушаю... говорите!";
+            } else {
+                outputDiv.textContent = "Ваш браузер не поддерживает распознавание речи!";
+            }
+        }
+
+        function stopSpeechRecognition() {
+            if (recognition) {
+                recognition.stop();
+            }
+            isRecognizing = false;
+            startRecognitionBtn.textContent = "Начать распознавание";
+            outputDiv.textContent += "\nРаспознавание остановлено";
+            console.log(outputDiv)
+            console.log(inputDiv)
+        }
+    </script>
+</body>
+</html>
