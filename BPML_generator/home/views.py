@@ -6,10 +6,12 @@ import json
 
 @csrf_exempt
 def transcribe_audio(request):
+    '''Основная функция обработки работы страницы сайта.'''
 
-    print('aaaaaaaaaaaaaaaaaaaaaaaa')
     if request.method == 'POST' and request.FILES.get('audio'):
-        '''Здесь происходит обработка'''
+        '''Здесь происходит обработка аудиофойла. Приходит фаил формата wmv. 
+        Возвращает текст в поле c id "userInput" для редактуры.
+        '''
 
         # Делаем что-то с текстом (например, возвращаем его обратно)
         response_data = {
@@ -19,6 +21,9 @@ def transcribe_audio(request):
         return JsonResponse(response_data)  # Отправляем JSON-ответ
 
     if request.method == 'POST' and request.body:
+        '''Здесь происходит обработка текств. Приходит фаил формата json.
+        Пока не возвращает ничего, надо смотреть что должно вернуть
+        '''
         try:
             # Получаем JSON из тела запроса
             data = json.loads(request.body)
@@ -31,45 +36,8 @@ def transcribe_audio(request):
 
             return JsonResponse(response_data)  # Отправляем JSON-ответ
 
+        # Обработка ошибок
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=400)
 
-    return render(request, "transcribe_audio21.html")
-    #return render(request, "transcribe_audio.html")
-
-
-
-# from django.shortcuts import render
-# from django.core.files.storage import FileSystemStorage
-# from django.http import JsonResponse
-# from pvleopard import create, LeopardActivationLimitError, LeopardError
-
-
-# def transcribe_audio(request):
-#     if request.method == 'POST' and request.FILES['audioFile']:
-#         try:
-#             # save file to server
-#             file = request.FILES['audioFile']
-#             fs = FileSystemStorage()
-#             filename = fs.save(file.name, file)
-            
-#             # transcribe with Leopard Speech-to-Text
-#             leopard = create(access_key="${ACCESS_KEY}")
-#             transcript, words = leopard.process_file(filename)
-            
-#             # clean up
-#             leopard.delete()
-#             fs.delete(filename)
-#         except LeopardActivationLimitError:
-#             return JsonResponse({'error': "AccessKey has reached its processing limit."})
-#         except LeopardError:
-#             return JsonResponse({'error': "Unable to transcribe audio file."})
-#         else:
-#             for word in words:
-#                 print(
-#                     "{word=\"%s\" start_sec=%.2f end_sec=%.2f confidence=%.2f}"
-#                     % (word.word, word.start_sec, word.end_sec, word.confidence))
-#             return JsonResponse({'transcript': transcript})
-#     return render(request, "transcribe_audio.html")
-
-
+    return render(request, "transcribe_audio.html")
