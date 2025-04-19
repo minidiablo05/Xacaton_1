@@ -1,6 +1,7 @@
 :root {
     --primary-color: #6e48aa;
     --secondary-color: #9d50bb;
+    --tertiary-color: #f70b8c;
     --bg-color: #f5f7fa;
     --message-bg: #ffffff;
     --bot-message-bg: #f0f4ff;
@@ -111,6 +112,10 @@ body {
 
 .chat-input button:hover {
     background-color: var(--secondary-color);
+}
+
+.chat-input button.active {
+    background-color: var(--tertiary-color);
 }
 
 .chat-footer {

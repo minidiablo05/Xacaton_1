@@ -1,5 +1,4 @@
 from django.shortcuts import render
-from django.core.files.storage import FileSystemStorage
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
@@ -9,7 +8,7 @@ def transcribe_audio(request):
     '''Основная функция обработки работы страницы сайта.'''
 
     if request.method == 'POST' and request.FILES.get('audio'):
-        '''Здесь происходит обработка аудиофойла. Приходит фаил формата wmv. 
+        '''Здесь происходит обработка аудиофойла. Приходит фаил формата wmv.
         Возвращает текст в поле c id "userInput" для редактуры.
         '''
 

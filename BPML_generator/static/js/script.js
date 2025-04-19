@@ -1,7 +1,19 @@
 document.addEventListener('DOMContentLoaded', function() {
+
+    // обьявление переменных
+
+    // Переменные для отправки текстового сообщения
     const chatMessages = document.getElementById('chatMessages');
-    const userInput = document.getElementById('userInput');
     const sendButton = document.getElementById('sendButton');
+
+    // Переменные для записи аудио
+    const speechBtn = document.getElementById('Record');
+    let mediaRecorder;
+    let audioChunks = [];
+    let audioStream; // Для хранения потока микрофона
+    let isRecognizing = false;
+
+    const userInput = document.getElementById('userInput');
 
     // Автоматическое увеличение высоты textarea
     userInput.addEventListener('input', function() {
@@ -17,9 +29,24 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    
+    // Запуск обработок кнопки
+
+    // Обработчик кнопки отправки сообщения.
     sendButton.addEventListener('click', sendMessage);
 
+    // Обработчик кнопки микрофона.
+    speechBtn.addEventListener('click', () => {
+        if (!isRecognizing) {
+            startSpeech();
+        } else {
+            stopSpeech();
+        }
+    });
+
+
     function sendMessage() {
+        // Проверка на наличие сообщения.
         const message = userInput.value.trim();
         if (message === '') return;
 
@@ -27,9 +54,6 @@ document.addEventListener('DOMContentLoaded', function() {
         addMessage(message, 'user');
         userInput.value = '';
         userInput.style.height = 'auto';
-
-        // Показываем индикатор набора текста
-        showTypingIndicator();
 
         const csrfToken = getCookie('csrftoken'); // Получаем CSRF-токен
 
@@ -47,14 +71,14 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(response => response.json())  // Если Django возвращает JSON
         .then(data => {
-          console.log("Ответ от Django:", data);
-          const receivedText = data.response;  // Предположим, Django вернул {"response": "..."}
-          console.log("Текст из Django:", receivedText);
+          // Вывод ответа сервера.
+          addMessage(data.response, 'bot'); // Предположим, Django вернул {"response": "..."}
+          removeTypingIndicator()
         })
         .catch(error => console.error('Ошибка:', error));
-
     }
 
+    // html заполнение ответа от сервера.
     function addMessage(text, sender) {
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${sender}-message`;
@@ -63,6 +87,7 @@ document.addEventListener('DOMContentLoaded', function() {
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
+    // Создание эффекта обработки сообщения.
     function showTypingIndicator() {
         const typingDiv = document.createElement('div');
         typingDiv.className = 'message bot-message';
@@ -80,139 +105,92 @@ document.addEventListener('DOMContentLoaded', function() {
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
+    // Удаление эффекта обработки сообщения.
     function removeTypingIndicator() {
         const typingIndicator = document.getElementById('typingIndicator');
         if (typingIndicator) {
             typingIndicator.remove();
         }
     }
-});
 
-
-const statusDiv = document.getElementById('statusDiv'); // Добавьте этот элемент в id="Record"HTML
-const speechBtn = document.getElementById('Record');
-
-let mediaRecorder;
-let audioChunks = [];
-let audioStream; // Для хранения потока микрофона
-
-let isRecognizing = false;
-
-// Функция для кодирования WAV в MP3
-function encodeToMp3(audioBuffer) {
-    const channels = audioBuffer.numberOfChannels;
-    const sampleRate = audioBuffer.sampleRate;
-    const samples = audioBuffer.getChannelData(0);
-
-
-    const mp3encoder = new lamejs.Mp3Encoder(channels, sampleRate, 128);
-    const sampleBlockSize = 1152;
-    const mp3Data = [];
-
-    for (let i = 0; i < samples.length; i += sampleBlockSize) {
-        const sampleChunk = samples.subarray(i, i + sampleBlockSize);
-        const mp3buf = mp3encoder.encodeBuffer(sampleChunk);
-        if (mp3buf.length > 0) {
-            mp3Data.push(mp3buf);
-        }
-    }
-
-    const mp3buf = mp3encoder.flush();
-    if (mp3buf.length > 0) {
-        mp3Data.push(mp3buf);
-    }
-
-    return new Blob(mp3Data, { type: 'audio/mp3' });
-}
-
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.startsWith(name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
+    // Cоздание scfr токена
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.startsWith(name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
             }
         }
+        return cookieValue;
     }
-    return cookieValue;
-}
 
-speechBtn.addEventListener('click', () => {
-            if (!isRecognizing) {
-                startSpeech();
-            } else {
-                stopSpeech();
-            }
-        });
+    // Функция обработки записи микрофона.
+    async function startSpeech() {
+        try {
+            // Запрос разрешения на микрофон и начало записи
+            audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(audioStream);
 
-// Запрос разрешения на микрофон и начало записи
-async function startSpeech() {
-    try {
-        speechBtn.textContent = "Идёт запись";
-        audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorder = new MediaRecorder(audioStream);
+            mediaRecorder.ondataavailable = event => {
+                audioChunks.push(event.data);
+            };
+            
+            speechBtn.textContent = 'идёт запись';
 
-        mediaRecorder.ondataavailable = event => {
-            audioChunks.push(event.data);
-        };
+            mediaRecorder.onstop = async () => {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
 
-        mediaRecorder.onstop = async () => {
-            speechBtn.textContent = "Идёт отправка";
-            const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-            // const mp3Blob = encodeToMp3(audioBlob);
+                const formData = new FormData();
+                formData.append('audio', audioBlob, 'recording.wav');
 
-            const formData = new FormData();
-            // formData.append('audio', mp3Blob, 'recording.mp3');
-            formData.append('audio', audioBlob, 'recording.wav');
-
-            try {
                 const csrfToken = getCookie('csrftoken'); // Получаем CSRF-токен
 
-                // Добавлен async/await для правильной обработки Promise
-                const response = await fetch('', {
+                addMessage('Отправка файла для расшифровки', 'bot');
+                showTypingIndicator();
+
+                fetch('', {  // Убедитесь, что URL правильный
                     method: 'POST',
-                    body: formData,
                     headers: {
-                        'X-CSRFToken': csrfToken, // Добавляем CSRF-токен в заголовок
+                      'X-CSRFToken': csrfToken,  // Если Django требует CSRF-токен
                     },
-                    credentials: 'include', // Важно для передачи куки
-                });
+                    body: formData,
+                    credentials: 'include',
+                  })
+                  .then(response => response.json())  // Если Django возвращает JSON
+                  .then(data => {
+                    // Вывод ответа сервера.
+                    userInput.value = data.response; // Предположим, Django вернул {"response": "..."}
+                    removeTypingIndicator()
+                    addMessage('Расшифровка проведена успешно.', 'bot');
+                  })
+                  .catch(error => console.error('Ошибка:', error));
 
-                const result = await response.json();
-                userInput.value = result.response;
-                if (statusDiv) {
-                    statusDiv.textContent = "Файл успешно отправлен!";
-                }
-                console.log("Ответ сервера:", result);
-            } catch (error) {
-                if (statusDiv) {
-                    statusDiv.textContent = "Ошибка отправки: " + error.message;
-                }
-                console.error("Ошибка:", error);
-            }
+                // Освобождаем поток микрофона
+                audioStream.getTracks().forEach(track => track.stop());
 
-            // Освобождаем поток микрофона
-            audioStream.getTracks().forEach(track => track.stop());
+            };
 
-        };
-
-        mediaRecorder.start();
-        isRecognizing = true;
-        audioChunks = [];
-    } catch (error) {
-        console.error('Ошибка доступа к микрофону:', error);
-        alert('Не удалось получить доступ к микрофону');
+            mediaRecorder.start();
+            isRecognizing = true;
+            audioChunks = [];
+        } catch (error) {
+            console.error('Ошибка доступа к микрофону:', error);
+            alert('Не удалось получить доступ к микрофону');
+        }
     }
-}
 
-// Остановка записи
-async function stopSpeech(){
-    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-        mediaRecorder.stop();
-        isRecognizing = false;
-        speechBtn.textContent = "Запись отправленна";
+    // Функция остановка записи.
+    async function stopSpeech(){
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+            mediaRecorder.stop();
+            isRecognizing = false;
+            speechBtn.innerHTML = '<i class="fa-solid fa-microphone-lines"></i>';
+        }
     }
-}
+
+});
